@@ -1,3 +1,6 @@
+import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
 let users = [
     {
         id: 1,
