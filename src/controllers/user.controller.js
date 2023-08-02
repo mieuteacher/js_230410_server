@@ -13,5 +13,19 @@ export default {
                 }
             )
         }
-    }
+    },
+    create: async (req, res) => {
+        console.log("res.body", req.body);
+        try {
+            let modelRes = await userModel.create(req.body)
+            res.status(modelRes.status ? 200 : 413).json(modelRes)
+
+        } catch (err) {
+            return res.status(500).json(
+                {
+                    message: "Bad request !"
+                }
+            )
+        }
+    },
 }

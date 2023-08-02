@@ -19,5 +19,22 @@ export default {
             messsage: "Read users success !",
             data: users
         }
+    }, 
+    create: async (newUser) => {
+        try {
+           let user = await prisma.users.create({
+            data: newUser
+           })
+           
+           return {
+                status: true,
+                message: "Register thành công! Vui Lòng kiểm tra email"
+           }
+        }catch(err) {
+            return {
+                status: false,
+                message: "Lỗi truy vấn!"
+            }
+        }
     }
 }
