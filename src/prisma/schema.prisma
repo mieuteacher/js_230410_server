@@ -11,6 +11,7 @@ model users {
     id            Int      @id @unique @default(autoincrement())
     email         String   @unique @db.Char(100)
     email_confirm Boolean  @default(false)
+    user_name     String   @unique @db.Char(30)
     first_name    String   @db.Char(30)
     last_name     String   @db.Char(30)
     password      String   @db.Char(255)
