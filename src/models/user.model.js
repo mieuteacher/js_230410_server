@@ -1,25 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
-
-let users = [
-    {
-        id: 1,
-        name: "Abc"
-    },
-    {
-        id: 1,
-        name: "Xyz"
-    }
-];
-
 export default {
-    read: async () => {
-        return {
-            status: true,
-            messsage: "Read users success !",
-            data: users
-        }
-    }, 
     create: async function (newUser) {
         try {
            await prisma.users.create({
@@ -124,6 +105,30 @@ export default {
             return {
                 status: false,
                 message: "Đang"
+            }
+        }
+    },
+    login: async (loginData) => {
+        try {
+           let user = await prisma.users.findUnique({
+            // 1: user_name, 0: email
+            where: loginData.type ? {user_name: loginData.user_name} : {email: loginData.user_name, email_confirm: true}
+           })
+           if (!user) {
+            return {
+                    status: false,
+                    message: "Không tìm thấy người dùng!",
+            }
+           }
+           return {
+                status: true,
+                message: "Thông tin người dùng!",
+                data: user
+           }
+        }catch(err) {
+            return {
+                status: false,
+                message: "Không tìm thấy người dùng!"
             }
         }
     }
