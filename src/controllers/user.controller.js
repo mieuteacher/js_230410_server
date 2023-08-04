@@ -3,23 +3,37 @@ import mailService from '../services/mail';
 import ejs from 'ejs'
 import path from 'path'
 import jwt from '../services/jwt';
+import bcrypt from 'bcrypt';
+import ipService from '../services/ip'
+
+async function sendMailLogin(user, ip) {
+    let result = await ipService.deIp(ip); // 5.181.233.162
+    /* Xử lý email */
+    try {
+        let mailSent = await mailService.sendMail({
+            to: user.email,
+            subject: "Thông báo về tài khoản",
+            html: `
+                <h1 style="color: red">
+                    ${
+                        result.status == "fail" 
+                        ?
+                            "Tài khoản đã login tại địa chỉ ip là: " + ip
+                        : "Tài khoản đã login tại: quốc gia: " + result.country  + " với ip là: " +result.query
+                    }
+
+                </h1>
+            `
+        });
+    }catch(err) {
+        //console.log("err", err)
+    }
+}
 
 export default {
-    read: async (req, res) => {
-        try {
-            let modelRes = await userModel.read()
-            res.status(modelRes.status ? 200 : 413).json(modelRes)
-
-        } catch (err) {
-            return res.status(500).json(
-                {
-                    message: "Bad request !"
-                }
-            )
-        }
-    },
     create: async (req, res) => {
         try {
+            req.body.password = await bcrypt.hash(req.body.password, 10);
             let modelRes = await userModel.create(req.body)
 
             /* Xử lý email */
@@ -67,7 +81,7 @@ export default {
     },
     confirm: async (req, res) => {
         let decode = jwt.verifyToken(req.params.token)
-        console.log("decode", decode)
+
         if (!decode) {
             return res.send("Email đã hết hiệu lực!")
         }
@@ -83,6 +97,50 @@ export default {
                 }
             )
         }
+    },
+    login: async (req, res) => {
+        try {
+            let modelRes = await userModel.login(req.body)
+
+            if (modelRes.status) {
+                // xác thực passord
+                let checkPassword = await bcrypt.compare(req.body.password, modelRes.data.password)
+                if (!checkPassword) {
+                    modelRes.message = "Mật khẩu không chính xác!"
+                    return res.status(modelRes.status ? 200 : 413).json(modelRes)
+                }
+                // xác thực trạng thái tài khoản
+                if (modelRes.data.blocked) {
+                    modelRes.message = "Tài khoản đã bị khóa!"
+                    return res.status(modelRes.status ? 200 : 413).json(modelRes)
+                }
+                // thành công xử lý token
+                let token = jwt.createToken(modelRes, "1d");
+
+                // gửi mail thông báo về tình hình đăng nhập nếu đã xác nhận email.
+                let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress; // địa chỉ ip nơi gửi request
+                sendMailLogin(modelRes.data, ipAddress);
+
+                // trả về client
+                return res.status(token ? 200 : 314).json(
+                    {
+                        message: token  ? "Login thành công!" : "Server bảo trì!",
+                        token
+                    }
+                )
+            }
+            return res.status(modelRes.status ? 200 : 413).json(modelRes)
+        } catch (err) {
+            return res.status(500).json(
+                {
+                    message: "Lỗi xử lý!"
+                }
+            )
+        }
+    },
+    authenToken: async (req, res) => {
+        let decode = jwt.verifyToken(req.body.token)
+        return res.status(200).json(decode) 
     },
 }
 
